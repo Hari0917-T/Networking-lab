@@ -1,0 +1,56 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+int main() {
+    int sockfd;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t addr_size;
+    int numbers[2], sum;
+    int opt = 1;
+
+    // Create socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Socket creation failed");
+        exit(1);
+    }
+
+    // Allow reuse of address (prevents "Address already in use" error)
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    // Server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    // Bind
+    if (bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("Bind failed");
+        exit(1);
+    }
+
+    printf("UDP Server running...\n");
+
+    addr_size = sizeof(clientAddr);
+
+    // Receive two numbers
+    recvfrom(sockfd, numbers, sizeof(numbers), 0,
+             (struct sockaddr*)&clientAddr, &addr_size);
+
+    printf("Received numbers: %d and %d\n", numbers[0], numbers[1]);
+
+    // Add
+    sum = numbers[0] + numbers[1];
+
+    // Send result
+    sendto(sockfd, &sum, sizeof(sum), 0,
+           (struct sockaddr*)&clientAddr, addr_size);
+
+    printf("Sent sum = %d\n", sum);
+
+    close(sockfd);
+    return 0;
+}
