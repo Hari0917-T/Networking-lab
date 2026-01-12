@@ -1,0 +1,45 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+int main() {
+    int sockfd;
+    struct sockaddr_in serverAddr;
+    socklen_t addr_size;
+    int numbers[2], sum;
+
+    // Create socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Socket creation failed");
+        exit(1);
+    }
+
+    // Server address
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(12345);
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    addr_size = sizeof(serverAddr);
+
+    // Read numbers
+    printf("Enter first number: ");
+    scanf("%d", &numbers[0]);
+
+    printf("Enter second number: ");
+    scanf("%d", &numbers[1]);
+
+    // Send both numbers in one packet
+    sendto(sockfd, numbers, sizeof(numbers), 0,
+           (struct sockaddr*)&serverAddr, addr_size);
+
+    // Receive sum
+    recvfrom(sockfd, &sum, sizeof(sum), 0,
+             (struct sockaddr*)&serverAddr, &addr_size);
+
+    printf("Sum received from server = %d\n", sum);
+
+    close(sockfd);
+    return 0;
+}
