@@ -1,0 +1,54 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define MAX 1024
+
+int main() {
+    int sockfd, newsockfd;
+    struct sockaddr_in servaddr, cliaddr;
+    socklen_t len = sizeof(cliaddr);
+    char buffer[MAX];
+    int expected = 0;   // Server expects frame 0 first
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
+    listen(sockfd, 5);
+
+    printf("Server waiting...\n");
+
+    newsockfd = accept(sockfd, (struct sockaddr*)&cliaddr, &len);
+
+    while (1) {
+        memset(buffer, 0, MAX);
+        read(newsockfd, buffer, MAX);
+
+        if (strcmp(buffer, "exit") == 0)
+            break;
+
+        int frame = atoi(buffer);
+
+        printf("Received Frame: %d\n", frame);
+
+        if (frame == expected) {
+            write(newsockfd, "ACK", 3);
+            printf("Sent ACK\n");
+            expected = 1 - expected;   // Toggle expected frame
+        } else {
+            write(newsockfd, "NAK", 3);
+            printf("Sent NAK\n");
+        }
+    }
+
+    close(newsockfd);
+    close(sockfd);
+    return 0;
+}
