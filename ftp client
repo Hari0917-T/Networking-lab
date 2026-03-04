@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#define BUFFER_SIZE 1000
+#define PORT 5000
+int main(){
+	int sockfd;
+	char buffer[BUFFER_SIZE],command[10],filename[100];
+	struct sockaddr_in servaddr;
+	FILE *fp;
+	int n;
+	sockfd=socket(AF_INET,SOCK_STREAM,0);
+	if(sockfd<0){
+		perror("Socket creation failed");
+		return 1;
+	}
+	servaddr.sin_family=AF_INET;
+	servaddr.sin_port=htons(PORT);
+	servaddr.sin_addr.s_addr=inet_addr("127.0.0.1");
+	if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+		perror("Connection failed");
+		close(sockfd);
+		return 1;
+	}
+	
+	printf("Enter command(GET/PUT) : ");
+	scanf("%s",command);
+	printf("Enter filename : ");
+	scanf("%s",filename);
+	
+	sprintf(buffer,"%s %s",command,filename);
+	if(send(sockfd,buffer,strlen(buffer)+1,0)<0)
+	{
+		perror("file sending failed ");
+		close(sockfd);
+		return 1;
+	}
+	
+	if(strcmp(command,"GET")==0){
+		if(recv(sockfd,buffer,sizeof(buffer)-1,0)<0)
+		{
+			perror("reciving failed");
+			close(sockfd);
+			return 1;
+		}
+		if(strcmp(buffer,"ERROR")==0){
+			printf("File not found on server\n");
+		}else{
+			fp=fopen(filename,"wb");
+			while((n=recv(sockfd,buffer,BUFFER_SIZE,0))>0){
+				fwrite(buffer,1,n,fp);
+			}
+			fclose(fp);
+			printf("File downloaded successfully\n");
+		}
+	}
+	else if(strcmp(command,"PUT")==0){
+		fp=fopen(filename,"rb");
+		if(fp==NULL){
+			printf("File no found\n");
+			return 0;
+		}
+		while((n=fread(buffer,1,BUFFER_SIZE,fp))>0){
+			send(sockfd,buffer,n,0);
+		}
+		fclose(fp);
+		printf("File uploaded successfully\n");
+	}
+	close(sockfd);
+	return 0;
+}
